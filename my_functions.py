@@ -1,5 +1,4 @@
 import dionysus as d # persistence homology library
-from numpy import zeros
 import numpy as np
 import matplotlib.pyplot as plt
 import music21 as m21 # music library
@@ -169,11 +168,14 @@ def bottle_distance_matrix(h_scores, k_hom, T):
             tmpj = per_diagms(h_scores[j], T, norm=1)
             for k in k_hom:
                 bd[k][i][j] = d.bottleneck_distance(tmpi[k], tmpj[k])
+                bd[k][j][i] = bd[k][i][j] #leggera modifica
     return bd
 
 def dendrogram_plot(distance_matrix, score_names, testo, linkage_type = 'average',save=0):
     from scipy.cluster.hierarchy import dendrogram, linkage
-    linkage_matrix = linkage(distance_matrix, linkage_type) # distance_matrix is a triangular matrix
+    from scipy.spatial.distance import squareform
+    dist = squareform(distance_matrix)
+    linkage_matrix = linkage(dist, linkage_type)
     dendrogram(linkage_matrix,orientation='right', labels=score_names)
     plt.title(testo)
     if save:
