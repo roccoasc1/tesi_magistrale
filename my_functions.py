@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import music21 as m21 # music library
 
 
-# change the original function in dionysus because there were problem with poitns at infinity
+# change the original function in dionysus because there were problem with points at infinity
 def drawDgm(D, boundary=None, epsilon=.5, color=None):
     '''
     Draws simple persistence diagram plot
@@ -59,7 +59,7 @@ def drawDgm(D, boundary=None, epsilon=.5, color=None):
 
 def drawAll(d):
     '''
-    print all diagrams
+    Print all diagrams d
     '''
     for i, dmg in enumerate(d):
         for pt in dmg:
@@ -101,32 +101,43 @@ def C(n_1,n_2,n_3):
     return T
 
 def get_duration(score):
+    '''
+    Given a score in music21.stream format returns the distribution of the notes
+    '''
     h = [0]*12
-    for thisNote in score.flatten().getElementsByClass('Note'): # get all the notes in the score
-        # print(thisNote, thisNote.duration.quarterLength, thisNote.pitch.pitchClass)
+    for thisNote in score.flatten().getElementsByClass('Note'): # get all the notes in score
         h[thisNote.pitch.pitchClass] += thisNote.duration.quarterLength
     
-    for thisChord in score.recurse().getElementsByClass('Chord'): # get all the chords in the score
+    for thisChord in score.recurse().getElementsByClass('Chord'): # get all the chords in score
         for thisNote in thisChord:
-            # print(thisNote, thisNote.duration.quarterLength, thisNote.pitch.pitchClass)
             h[thisNote.pitch.pitchClass] += thisNote.duration.quarterLength
     
-    # Eventually we could split the duration of the chord in the note used:
+    # Eventually one could split the duration of the chord in the note used:
     #     h[thisNote.pitch.pitchClass] += thisNote.duration.quarterLength/thisChord.duration.quarterLength 
     return h
 
 def pitch_class_distribution(h):
+    '''
+    Plot the distrubution h of the notes
+    '''
     notes = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"]
     plt.bar(notes,h,align="center",ec = "grey",fc="dodgerblue")
     plt.ylabel('duration')
     plt.xlabel('pitch class')
 
 def per_diagms(h, T, norm = False):
+    '''
+    Given 
+    h = distrubution of the notes
+    T = Generalized Tonnetze (N=12)
+    returns the persistence diagrams computed usind dionysus library
+    '''
+    
     if norm:
         #rinormalization
         h = [a/sum(h) for a in h]
     
-    #create the lower_star filtration
+    #create the "lower_star" filtration
     filtr = d.Filtration()
     for sigma in T:
         filtr.append(d.Simplex(sigma,max([h[i] for i in sigma])))
@@ -137,8 +148,8 @@ def per_diagms(h, T, norm = False):
     dgms = d.init_diagrams(p, filtr)
     return dgms
 
-def per_diagms_score (s, T, norm = True, print_h = False):
-    h = get_duration(s)
+def per_diagms_score (score, T, norm = True, print_h = False):
+    h = get_duration(score)
           
     if print_h:
         print(f"pitch class distribution: {h}")
@@ -146,11 +157,17 @@ def per_diagms_score (s, T, norm = True, print_h = False):
     return per_diagms(h, T, norm)
 
 
-def bottle_dist_print(a,b,T,dim=2):
+def bottle_dist_print(score1,score2,T,dim=2):
+    '''
+    Print of the bottleneck distance between the i-th diagram of score1 and the i-th diagram of score2 for every dimension i up to dim
+    '''
     for i in range(dim+1):
-        print(f"{i}-dim diagrams distance : {d.bottleneck_distance(per_diagms_score(a,T)[i], per_diagms_score(b,T)[i])}")
+        print(f"{i}-dim diagrams distance : {d.bottleneck_distance(per_diagms_score(score1,T)[i], per_diagms_score(score2,T)[i])}")
         
 def transpose(s, inter):
+    '''
+    Transpose a score by an interval=inter
+    '''
     for n in s.flatten().getElementsByClass('Note'):
         n.transpose(inter, inPlace=True)
     
@@ -160,6 +177,11 @@ def transpose(s, inter):
     return s
 
 def bottle_distance_matrix(h_scores, k_hom, T):
+    '''
+    k_hom = [0] or [0,1] dimensions
+    
+    Compute the symmetric matrix bd[i] given by the pairwise distance of the i-th persistence diagrams with Tonnetz=T of the distributions h_scores
+    '''
     n = len(h_scores) # numeber of scores
     bd = np.zeros((len(k_hom),n,n))
     for i in range(0,n):
@@ -168,10 +190,13 @@ def bottle_distance_matrix(h_scores, k_hom, T):
             tmpj = per_diagms(h_scores[j], T, norm=1)
             for k in k_hom:
                 bd[k][i][j] = d.bottleneck_distance(tmpi[k], tmpj[k])
-                bd[k][j][i] = bd[k][i][j] #leggera modifica
+                bd[k][j][i] = bd[k][i][j]
     return bd
 
 def dendrogram_plot(distance_matrix, score_names, testo, linkage_type = 'average',save=0):
+    '''
+    Print hierarchical clustering with linkage_type given a dissimilarity matrix distance_matrix
+    '''
     from scipy.cluster.hierarchy import dendrogram, linkage
     from scipy.spatial.distance import squareform
     dist = squareform(distance_matrix)
